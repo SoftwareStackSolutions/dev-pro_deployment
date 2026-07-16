@@ -3,7 +3,7 @@ name: DEV Deployment
 on:
   push:
     branches:
-      - DEV
+      - Dev
 
 permissions:
   contents: read
