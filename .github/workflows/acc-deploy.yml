@@ -4,74 +4,122 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Release Version
+        description: "Release Version (Example: 0.1.0)"
         required: true
         default: "0.1.0"
 
 permissions:
+  id-token: write
   contents: write
   pull-requests: write
 
 jobs:
-
   deploy:
-
+    name: Deploy to ACC
     runs-on: ubuntu-latest
 
+    # GitHub Environment for Manual Approval
     environment: production-approval
 
     steps:
+      ##########################################################
+      # Checkout Repository
+      ##########################################################
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
+      ##########################################################
+      # Configure AWS Credentials
+      ##########################################################
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_ACC }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_ACC }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      - uses: hashicorp/setup-terraform@v3
+      ##########################################################
+      # Setup Terraform
+      ##########################################################
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
 
+      ##########################################################
+      # Verify Terraform Version
+      ##########################################################
+      - name: Terraform Version
+        run: terraform version
+
+      ##########################################################
+      # Terraform Init
+      ##########################################################
       - name: Terraform Init
         run: terraform init
 
+      ##########################################################
+      # Identify Environment
+      ##########################################################
       - name: Identify Environment
         run: |
-          echo "Deploying ACC"
+          echo "=================================="
+          echo "Deploying Infrastructure to ACC"
+          echo "=================================="
 
+      ##########################################################
+      # Terraform Apply
+      ##########################################################
       - name: Terraform Apply
         run: |
           terraform apply \
             -auto-approve \
             -var-file=environments/acc.tfvars
 
-      #####################################
-      ## Create Version Tag
-      #####################################
+      ##########################################################
+      # Configure Git
+      ##########################################################
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
 
+      ##########################################################
+      # Create Git Tag
+      ##########################################################
       - name: Create Git Tag
         run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-
+          git fetch --tags
           git tag ${{ github.event.inputs.version }}
           git push origin ${{ github.event.inputs.version }}
 
-      #####################################
-      ## Create GitHub Release
-      #####################################
-
-      - name: Create Release
+      ##########################################################
+      # Create GitHub Release
+      ##########################################################
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.version }}
           name: Release ${{ github.event.inputs.version }}
+          generate_release_notes: true
 
-      #####################################
-      ## Create PR ACC -> PRO
-      #####################################
-
-      - name: Create Production PR
+      ##########################################################
+      # Create Pull Request ACC -> PRO
+      ##########################################################
+      - name: Create Pull Request to Production
         uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           base: pro
           branch: acc
-          title: Release ${{ github.event.inputs.version }} to Production
+          title: Release ${{ github.event.inputs.version }} to PRO
           body: |
-            ACC deployment completed.
+            ## ACC Deployment Completed
 
-            Ready for Production.
+            **Version:** `${{ github.event.inputs.version }}`
+
+            ### Deployment Details
+            - Environment: ACC
+            - Terraform Apply: Successful
+            - Git Tag Created
+            - GitHub Release Created
+
+            Please review and approve this PR to deploy to Production.
