@@ -3,7 +3,7 @@ name: DEV Pull Request Validation
 on:
   pull_request:
     branches:
-      - DEV
+      - Dev
 
 permissions:
   contents: read
