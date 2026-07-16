@@ -1,0 +1,77 @@
+name: Deploy ACC
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release Version
+        required: true
+        default: "0.1.0"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    environment: production-approval
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Identify Environment
+        run: |
+          echo "Deploying ACC"
+
+      - name: Terraform Apply
+        run: |
+          terraform apply \
+            -auto-approve \
+            -var-file=environments/acc.tfvars
+
+      #####################################
+      ## Create Version Tag
+      #####################################
+
+      - name: Create Git Tag
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          git tag ${{ github.event.inputs.version }}
+          git push origin ${{ github.event.inputs.version }}
+
+      #####################################
+      ## Create GitHub Release
+      #####################################
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: Release ${{ github.event.inputs.version }}
+
+      #####################################
+      ## Create PR ACC -> PRO
+      #####################################
+
+      - name: Create Production PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          base: pro
+          branch: acc
+          title: Release ${{ github.event.inputs.version }} to Production
+          body: |
+            ACC deployment completed.
+
+            Ready for Production.
