@@ -1,30 +1,43 @@
-name: DEV Deployment
+name: DEV Pull Request Validation
 
 on:
-  push:
+  pull_request:
     branches:
       - Dev
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
-  terraform-apply:
-    name: Terraform Apply (DEV)
+  terraform-plan:
+    name: Validate, Scan & Plan
     runs-on: ubuntu-latest
 
     env:
       ENVIRONMENT: dev
 
     steps:
+      # Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # Setup Java (Required for Sonar Scanner)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.8
 
+      #################################################################
+      # Authenticate to AWS
+      #################################################################
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -32,14 +45,48 @@ jobs:
           aws-secret-access-key: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Identify Environment
-        run: echo "Deploying to $ENVIRONMENT"
+      #################################################################
+      # SonarQube Scan (EC2 Hosted)
+      #################################################################
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
+      #################################################################
+      # Terraform
+      #################################################################
       - name: Terraform Init
         run: terraform init
 
-      - name: Terraform Apply
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      #################################################################
+      # Identify Environment
+      #################################################################
+      - name: Identify Environment
+        run: echo "Deploying to $ENVIRONMENT"
+
+      #################################################################
+      # Terraform Plan
+      #################################################################
+      - name: Terraform Plan
         run: |
-          terraform apply \
-            -auto-approve \
-            -var-file=environments/dev.tfvars
+          terraform plan \
+            -input=false \
+            -var-file=environments/dev.tfvars \
+            -out=tfplan
+
+      #################################################################
+      # Upload Plan (Optional)
+      #################################################################
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: tfplan
