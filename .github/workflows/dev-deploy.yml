@@ -1,0 +1,37 @@
+name: DEV Deployment
+
+on:
+  push:
+    branches:
+      - DEV
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-apply:
+    name: Terraform Apply (DEV)
+    runs-on: ubuntu-latest
+
+    env:
+      ENVIRONMENT: dev
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      # Authenticate to your cloud provider here
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: |
+          terraform apply \
+            -auto-approve \
+            -var-file=environments/dev.tfvars
