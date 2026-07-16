@@ -1,0 +1,64 @@
+name: ACC Pull Request Validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+
+  terraform-plan:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # Sonar Scan
+      - name: Sonar Scan
+        run: |
+          echo "Running Sonar..."
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Identify Environment
+        run: |
+          echo "Environment=ACC"
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var-file=environments/acc.tfvars \
+            -out=tfplan
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: tfplan
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          base: acc
+          branch: release/${{ github.ref_name }}
+          title: Release ${{ github.ref_name }} to ACC
+          body: Terraform Plan completed.
