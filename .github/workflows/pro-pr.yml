@@ -66,14 +66,14 @@ jobs:
         run: terraform validate
 
       - name: Identify Environment
-        run: echo "Environment : $ENVIRONMENT"
+        run: |
+          echo "Environment : $ENVIRONMENT"
 
       - name: Terraform Plan
         run: |
           terraform plan \
             -input=false \
-            -var-file=environments/prod.tfvars \
-            -out=tfplan
+           
 
       - name: Upload Terraform Plan
         uses: actions/upload-artifact@v4
