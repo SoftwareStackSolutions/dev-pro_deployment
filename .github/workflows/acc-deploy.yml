@@ -3,7 +3,7 @@ name: ACC Deployment
 on:
   push:
     branches:
-      - ACC
+      - Acc
 
 permissions:
   contents: read
