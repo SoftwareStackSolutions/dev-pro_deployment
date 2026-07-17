@@ -46,12 +46,12 @@ jobs:
           terraform apply \
           -auto-approve \
         
-      - name: Create Pull Request ACC -> PROD
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          gh pr create \
-            --base Prod \
-            --head Acc \
-            --title "Release ACC to PROD envirnoment" \
-            --body "Automated promotion from ACC to PROD."
+      # - name: Create Pull Request ACC -> PROD
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GH_PAT }}
+      #   run: |
+      #     gh pr create \
+      #       --base Prod \
+      #       --head Acc \
+      #       --title "Release ACC to PROD envirnoment" \
+      #       --body "Automated promotion from ACC to PROD."
