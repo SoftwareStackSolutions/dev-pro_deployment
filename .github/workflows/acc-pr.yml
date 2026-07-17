@@ -103,7 +103,8 @@ jobs:
         run: terraform validate
 
       - name: Identify Environment
-        run: echo "Environment: $ENVIRONMENT"
+        run: |
+          echo "Environment: $ENVIRONMENT"
 
       - name: Terraform Plan
         run: terraform plan -input=false -out=tfplan
