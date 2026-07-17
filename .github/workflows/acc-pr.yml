@@ -31,12 +31,42 @@ jobs:
             echo "Only release/* or hotfix/* branches can create a PR into ACC."
             exit 1
           fi
-
+          
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          istribution: temurin
           java-version: 17
+          
+      - name: Create Version Tag
+        run: |
+          git fetch --tags
+      
+          latest=$(git tag --list "v*" --sort=-version:refname | head -n 1)
+      
+          if [ -z "$latest" ]; then
+            next="v0.1.0"
+          else
+            version=${latest#v}
+            IFS='.' read -r major minor patch <<< "$version"
+      
+            minor=$((minor + 1))
+            patch=0
+      
+            next="v${major}.${minor}.${patch}"
+          fi
+      
+          echo "Creating tag $next"
+      
+          git tag "$next"
+          git push origin "$next"
+      
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
