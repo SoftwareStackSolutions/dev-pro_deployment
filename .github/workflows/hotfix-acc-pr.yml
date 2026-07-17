@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      ENVIRONMENT: acc
+      ENVIRONMENT: hotfix
 
     steps:
 
