@@ -1,4 +1,4 @@
-#demo codes
+#demo codes for testing
 terraform {
   required_version = ">= 1.9.8"
 }
