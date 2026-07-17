@@ -53,5 +53,5 @@ jobs:
           gh pr create \
             --base Prod \
             --head Acc \
-            --title "Release ACC to PROD" \
+            --title "Release ACC to PROD envirnoment" \
             --body "Automated promotion from ACC to PROD."
