@@ -6,7 +6,7 @@ on:
       - Acc
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 jobs:
@@ -18,15 +18,16 @@ jobs:
       ENVIRONMENT: acc
 
     steps:
-
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # Allow only release/* branches
+      # Allow only release/* and hotfix/* branches
       - name: Validate Source Branch
         run: |
           echo "Source Branch: ${{ github.head_ref }}"
-      
+
           if [[ ! "${{ github.head_ref }}" =~ ^(release|hotfix)/ ]]; then
             echo "Only release/* or hotfix/* branches can create a PR into ACC."
             exit 1
@@ -36,7 +37,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -49,32 +50,13 @@ jobs:
           aws-access-key-id: ${{ secrets.ACC_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.ACC_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.ACC_AWS_REGION }}
-          
-      - name: Create Next Version Tag
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          git fetch --tags
-      
-          latest=$(git tag --list "v*" --sort=-version:refname | head -n 1)
-      
+
           if [ -z "$latest" ]; then
             next="v0.1.0"
           else
             version=${latest#v}
             IFS='.' read -r major minor patch <<< "$version"
-            patch=$((patch + 1))
-            next="v${major}.${minor}.${patch}"
-          fi
-      
-          echo "Creating tag: $next"
-      
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-      
-          git tag "$next"
-          git push origin "$next"
-          
+
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
         env:
@@ -89,20 +71,19 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-      
+
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
-      
+
       - name: Terraform Validate
         run: terraform validate
-      
+
       - name: Identify Environment
-        run: |
-         echo "Environment : $ENVIRONMENT"
-      
+        run: echo "Environment : $ENVIRONMENT"
+
       - name: Terraform Plan
         run: terraform plan -input=false -out=tfplan
-      
+
       - name: Upload Terraform Plan
         uses: actions/upload-artifact@v4
         with:
