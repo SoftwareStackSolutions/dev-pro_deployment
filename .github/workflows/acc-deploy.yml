@@ -33,6 +33,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.ACC_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.ACC_AWS_REGION }}
 
+
       - name: Identify Environment
         run: echo "Deploying to $ENVIRONMENT"
 
@@ -43,4 +44,4 @@ jobs:
         run: |
           terraform apply \
           -auto-approve \
-          -var-file=environments/acc.tfvars
+        
