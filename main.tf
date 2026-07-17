@@ -1,4 +1,4 @@
-# main.tf
+# main.tf file
 terraform {
   required_version = ">= 1.9.8"
 }
