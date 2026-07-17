@@ -27,8 +27,8 @@ jobs:
         run: |
           echo "Source Branch: ${{ github.head_ref }}"
 
-          if [[ "${{ github.head_ref }}" != "ACC" ]]; then
-            echo "Only ACC branch can create PR into PROD."
+          if [[ "${{ github.head_ref }}" != "Acc" ]]; then
+            echo "Only Acc branch can create PR into PROD."
             exit 1
           fi
 
