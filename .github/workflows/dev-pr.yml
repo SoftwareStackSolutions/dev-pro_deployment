@@ -49,10 +49,16 @@ jobs:
       # SonarQube Scan (EC2 Hosted)
       #################################################################
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=dev-pro_deployment
+            -Dsonar.projectName=dev-pro_deployment
+            -Dsonar.sources=.
+            -Dsonar.exclusions=.terraform/**,**/*.tfstate,**/*.tfstate.backup,**/.terraform.lock.hcl
 
       #################################################################
       # Terraform
