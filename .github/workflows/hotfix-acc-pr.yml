@@ -26,9 +26,9 @@ jobs:
       - name: Validate Source Branch
         run: |
           echo "Source Branch: ${{ github.head_ref }}"
-
-          if [[ ! "${{ github.head_ref }}" =~ ^release\/ ]]; then
-            echo "Only release/* branches can create PR into ACC."
+      
+          if [[ ! "${{ github.head_ref }}" =~ ^(release|hotfix)/ ]]; then
+            echo "Only release/* or hotfix/* branches can create a PR into ACC."
             exit 1
           fi
 
