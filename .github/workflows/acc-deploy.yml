@@ -51,7 +51,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           gh pr create \
-            --base PROD \
-            --head ACC \
+            --base Prod \
+            --head Acc \
             --title "Release ACC to PROD" \
             --body "Automated promotion from ACC to PROD."
