@@ -45,3 +45,12 @@ jobs:
           terraform apply \
           -auto-approve \
         
+      - name: Create Pull Request ACC -> PROD
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --base PROD \
+            --head ACC \
+            --title "Release ACC to PROD" \
+            --body "Automated promotion from ACC to PROD."
