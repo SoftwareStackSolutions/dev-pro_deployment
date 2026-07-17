@@ -3,7 +3,7 @@ name: ACC Pull Request Validation
 on:
   pull_request:
     branches:
-      - Acc
+      - hotfix
 
 permissions:
   contents: read
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   terraform-plan:
-    name: Terraform Plan (ACC)
+    name: Terraform Plan (hotfix-ACC)
     runs-on: ubuntu-latest
 
     env:
