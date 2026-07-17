@@ -61,25 +61,22 @@ jobs:
             -Dsonar.projectName=acc-deployment
             -Dsonar.sources=.
             -Dsonar.exclusions=.terraform/**,**/*.tfstate,**/*.tfstate.backup,**/.terraform.lock.hcl
-            - name: Terraform Init
-              run: terraform init
 
+      - name: Terraform Init
+        run: terraform init
+      
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
-
+      
       - name: Terraform Validate
         run: terraform validate
-
+      
       - name: Identify Environment
-        run: |
-          echo "Environment : $ENVIRONMENT"
-        
+        run: echo "Environment : $ENVIRONMENT"
+      
       - name: Terraform Plan
-        run: |
-          terraform plan \
-          -input=false \
-         
-
+        run: terraform plan -input=false -out=tfplan
+      
       - name: Upload Terraform Plan
         uses: actions/upload-artifact@v4
         with:
