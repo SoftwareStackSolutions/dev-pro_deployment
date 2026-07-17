@@ -21,7 +21,16 @@ jobs:
       # Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v4
-
+        
+      - name: Validate Source Branch
+        run: |
+          echo "Source Branch: ${{ github.head_ref }}"
+      
+          if [[ ! "${{ github.head_ref }}" =~ ^(feature|hotfix)/ ]]; then
+            echo "Only feature/* or hotfix/* branches can create a PR into Dev."
+            exit 1
+          fi
+          
       # Setup Java (Required for Sonar Scanner)
       - name: Setup Java
         uses: actions/setup-java@v4
