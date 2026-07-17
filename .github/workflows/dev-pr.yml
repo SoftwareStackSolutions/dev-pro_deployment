@@ -1,4 +1,4 @@
-name: DEV Pull Request Validation
+name: DEV Pull Request Validations
 
 on:
   pull_request:
