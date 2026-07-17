@@ -52,6 +52,6 @@ jobs:
         run: |
           gh pr create \
             --base Prod \
-            --head Acc \
-            --title "Release ACC to PROD" \
-            --body "Automated promotion from ACC to PROD."
+            --head hotfix \
+            --title "Release hotfix to PROD" \
+            --body "Automated promotion from hotfix to PROD."
