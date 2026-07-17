@@ -82,11 +82,7 @@ jobs:
       # Terraform Plan
       #################################################################
       - name: Terraform Plan
-        run: |
-          terraform plan \
-            -input=false \
-            -var-file=environments/dev.tfvars \
-            -out=tfplan
+        run: terraform plan -input=false -out=tfplan
 
       #################################################################
       # Upload Plan (Optional)
