@@ -3,7 +3,7 @@ name: ACC Pull Request Validation
 on:
   pull_request:
     branches:
-      - ACC
+      - Acc
 
 permissions:
   contents: read
