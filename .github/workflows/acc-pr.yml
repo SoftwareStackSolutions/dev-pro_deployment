@@ -51,11 +51,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.ACC_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.ACC_AWS_REGION }}
 
-          if [ -z "$latest" ]; then
-            next="v0.1.0"
-          else
-            version=${latest#v}
-            IFS='.' read -r major minor patch <<< "$version"
+            if [ -z "$latest" ]; then
+              next="v0.1.0"
+            else
+              version=${latest#v}
+              IFS='.' read -r major minor patch <<< "$version"
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
@@ -79,7 +79,8 @@ jobs:
         run: terraform validate
 
       - name: Identify Environment
-        run: echo "Environment : $ENVIRONMENT"
+        run: |
+            echo "Environment : $ENVIRONMENT"
 
       - name: Terraform Plan
         run: terraform plan -input=false -out=tfplan
