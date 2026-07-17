@@ -3,7 +3,7 @@ name: ACC Deployment
 on:
   push:
     branches:
-      - Acc
+      - hotfix
 
 permissions:
    contents: write
@@ -11,11 +11,11 @@ permissions:
 
 jobs:
   terraform-apply:
-    name: Terraform Apply (ACC)
+    name: Terraform Apply (hotfix -ACC)
     runs-on: ubuntu-latest
 
     env:
-      ENVIRONMENT: acc
+      ENVIRONMENT: hotfix
 
     steps:
 
