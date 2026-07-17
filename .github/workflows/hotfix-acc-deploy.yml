@@ -46,7 +46,7 @@ jobs:
           terraform apply \
           -auto-approve \
         
-      - name: Create Pull Request ACC -> PROD
+      - name: Create Pull Request hotfix -> PROD
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
