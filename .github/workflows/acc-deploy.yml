@@ -1,0 +1,57 @@
+name: ACC Deployment
+
+on:
+  push:
+    branches:
+      - Acc
+
+permissions:
+   contents: write
+   pull-requests: write
+
+jobs:
+  terraform-apply:
+    name: Terraform Apply (ACC)
+    runs-on: ubuntu-latest
+
+    env:
+      ENVIRONMENT: acc
+
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.ACC_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ACC_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.ACC_AWS_REGION }}
+
+
+      - name: Identify Environment
+        run: echo "Deploying to $ENVIRONMENT"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: |
+          terraform apply \
+          -auto-approve \
+        
+      # - name: Create Pull Request ACC -> PROD
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GH_PAT }}
+      #   run: |
+      #     gh pr create \
+      #       --base Prod \
+      #       --head Acc \
+      #       --title "Release ACC to PROD envirnoment" \
+      #       --body "Automated promotion from ACC to PROD."

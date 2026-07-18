@@ -1,0 +1,116 @@
+name: ACC Pull Request Validation
+
+on:
+  pull_request:
+    branches:
+      - Acc
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  terraform-plan:
+    name: Terraform Plan (ACC)
+    runs-on: ubuntu-latest
+
+    env:
+      ENVIRONMENT: acc
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Source Branch
+        run: |
+          echo "Source Branch: ${{ github.head_ref }}"
+
+          if [[ ! "${{ github.head_ref }}" =~ ^(release|hotfix)/ ]]; then
+            echo "Only release/* or hotfix/* branches can create a PR into ACC."
+            exit 1
+          fi
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git
+
+      - name: Create Version Tag
+        run: |
+          git fetch --tags
+
+          latest=$(git tag --list "v*" --sort=-version:refname | head -n1)
+
+          echo "Latest Tag: $latest"
+
+          if [ -z "$latest" ]; then
+            next="v1.0.1"
+          else
+            version=${latest#v}
+            IFS='.' read -r major minor patch <<< "$version"
+
+            patch=$((patch + 1))
+
+            next="v${major}.${minor}.${patch}"
+          fi
+
+          echo "Creating Tag: $next"
+
+          git tag "$next"
+          git push origin "$next"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.ACC_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ACC_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.ACC_AWS_REGION }}
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=acc-deployment
+            -Dsonar.projectName=acc-deployment
+            -Dsonar.sources=.
+            -Dsonar.exclusions=.terraform/**,**/*.tfstate,**/*.tfstate.backup,**/.terraform.lock.hcl
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Identify Environment
+        run: |
+          echo "Environment: $ENVIRONMENT"
+
+      - name: Terraform Plan
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-acc
+          path: tfplan
