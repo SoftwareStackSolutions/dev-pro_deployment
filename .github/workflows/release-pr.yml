@@ -118,3 +118,44 @@ jobs:
         with:
           name: terraform-plan-acc
           path: tfplan
+          
+      - name: Create Pull Request to ACC
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          echo "Checking if PR already exists..."
+
+          PR_EXISTS=$(gh pr list \
+            --base Acc \
+            --head "${{ inputs.source_branch }}" \
+            --state open \
+            --json number \
+            --jq 'length')
+
+          if [ "$PR_EXISTS" -gt 0 ]; then
+            echo "Pull Request already exists."
+            exit 0
+          fi
+
+          echo "Creating Pull Request..."
+
+          gh pr create \
+            --base Acc \
+            --head "${{ inputs.source_branch }}" \
+            --title "Release: ${{ inputs.source_branch }} → Acc" \
+            --body "
+          ## ACC Release
+
+          **Source Branch:** \`${{ inputs.source_branch }}\`
+
+          **Target Branch:** \`Acc\`
+
+          ### Validation Completed
+
+          - ✅ SonarQube Scan
+          - ✅ Terraform Format Check
+          - ✅ Terraform Validate
+          - ✅ Terraform Plan
+
+          Please review and merge this PR.
+          "
