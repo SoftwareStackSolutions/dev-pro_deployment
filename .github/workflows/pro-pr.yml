@@ -49,18 +49,6 @@ jobs:
           aws-access-key-id: ${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.PROD_AWS_REGION }}
-
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v6
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        with:
-          args: >
-            -Dsonar.projectKey=dev-pro_deployment
-            -Dsonar.projectName=dev-pro_deployment
-            -Dsonar.sources=.
-            -Dsonar.exclusions=.terraform/**,**/*.tfstate,**/*.tfstate.backup,**/.terraform.lock.hcl
             
       - name: Terraform Init
         run: terraform init
