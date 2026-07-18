@@ -6,8 +6,8 @@ on:
       - Acc
 
 permissions:
-   contents: write
-   pull-requests: write
+  contents: write
+  pull-requests: write
 
 jobs:
   terraform-apply:
@@ -18,7 +18,6 @@ jobs:
       ENVIRONMENT: acc
 
     steps:
-
       - name: Checkout Repository
         uses: actions/checkout@v4
 
@@ -34,7 +33,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.ACC_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.ACC_AWS_REGION }}
 
-
       - name: Identify Environment
         run: echo "Deploying to $ENVIRONMENT"
 
@@ -43,15 +41,55 @@ jobs:
 
       - name: Terraform Apply
         run: |
-          terraform apply \
-          -auto-approve \
-        
-      # - name: Create Pull Request ACC -> PROD
-      #   env:
-      #     GH_TOKEN: ${{ secrets.GH_PAT }}
-      #   run: |
-      #     gh pr create \
-      #       --base Prod \
-      #       --head Acc \
-      #       --title "Release ACC to PROD envirnoment" \
-      #       --body "Automated promotion from ACC to PROD."
+          terraform apply -auto-approve
+
+      - name: Authenticate GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          gh auth status
+
+      - name: Check if PR already exists
+        id: check_pr
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          COUNT=$(gh pr list \
+            --base Prod \
+            --head Acc \
+            --state open \
+            --json number \
+            --jq 'length')
+
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request ACC -> PROD
+        if: steps.check_pr.outputs.count == '0'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          gh pr create \
+            --base Prod \
+            --head Acc \
+            --title "Release ACC → PROD" \
+            --body "
+          ## ACC Deployment Completed
+
+          Environment : ACC
+
+          Terraform Apply completed successfully.
+
+          ### Please verify:
+
+          - Infrastructure
+          - Sonar Results
+          - Terraform Apply
+          - Smoke Testing
+
+          After verification, approve and merge this PR to deploy to Production.
+          "
+
+      - name: PR Already Exists
+        if: steps.check_pr.outputs.count != '0'
+        run: |
+          echo "ACC -> PROD Pull Request already exists."
