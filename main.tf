@@ -1,4 +1,4 @@
-
+# main.tf code
 terraform {
   required_version = ">= 1.9.8"
 }
