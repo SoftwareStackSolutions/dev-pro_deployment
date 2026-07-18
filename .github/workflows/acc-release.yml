@@ -1,10 +1,10 @@
-name: ACC Release Validation
+name: ACC Pull Request Validation
 
 on:
   workflow_dispatch:
     inputs:
-      release_branch:
-        description: Release Branch
+      source_branch:
+        description: "Source Branch (Example: release/v1.0.2 or hotfix/login-fix)"
         required: true
         type: string
 
@@ -13,28 +13,59 @@ permissions:
   pull-requests: write
 
 jobs:
-  validate-and-create-pr:
-    name: Validate Release & Create ACC PR
+  terraform-plan:
+    name: Terraform Plan (ACC)
     runs-on: ubuntu-latest
 
     env:
       ENVIRONMENT: acc
 
     steps:
-      - name: Checkout Release Branch
+      - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.release_branch }}
+          ref: ${{ inputs.source_branch }}
           fetch-depth: 0
 
-      - name: Validate Release Branch
+      - name: Validate Source Branch
         run: |
-          echo "Branch: ${{ github.event.inputs.release_branch }}"
+          echo "Source Branch: ${{ inputs.source_branch }}"
 
-          if [[ ! "${{ github.event.inputs.release_branch }}" =~ ^(release|hotfix)/ ]]; then
-            echo "Only release/* or hotfix/* branches are allowed."
+          if [[ ! "${{ inputs.source_branch }}" =~ ^(release|hotfix)/ ]]; then
+            echo "❌ Only release/* or hotfix/* branches are allowed."
             exit 1
           fi
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git
+
+      - name: Create Version Tag
+        run: |
+          git fetch --tags
+
+          latest=$(git tag --list "v*" --sort=-version:refname | head -n1)
+
+          echo "Latest Tag: $latest"
+
+          if [ -z "$latest" ]; then
+            next="v1.0.1"
+          else
+            version=${latest#v}
+            IFS='.' read -r major minor patch <<< "$version"
+
+            patch=$((patch + 1))
+
+            next="v${major}.${minor}.${patch}"
+          fi
+
+          echo "Creating Tag: $next"
+
+          git tag "$next"
+          git push origin "$next"
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -45,7 +76,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.9.8"
+          terraform_version: 1.9.8
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -87,28 +118,3 @@ jobs:
         with:
           name: terraform-plan-acc
           path: tfplan
-
-      - name: Create Pull Request to ACC
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: Acc
-          branch: ${{ github.event.inputs.release_branch }}
-          title: "Release ${{ github.event.inputs.release_branch }} → ACC"
-          body: |
-            ## ACC Release
-
-            Source Branch:
-            `${{ github.event.inputs.release_branch }}`
-
-            Target Branch:
-            `Acc`
-
-            ### Validation Completed
-            - ✅ SonarQube Scan
-            - ✅ Terraform Format
-            - ✅ Terraform Validate
-            - ✅ Terraform Plan
-
-            Please review and merge this PR to deploy to ACC.
-          draft: false
