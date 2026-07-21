@@ -8,6 +8,7 @@ resource "terraform_data" "demo" {
   input = "Hello Dev Pipeline"
 }
 
+# display the output
 output "message" {
   value = terraform_data.demo.output
 }
