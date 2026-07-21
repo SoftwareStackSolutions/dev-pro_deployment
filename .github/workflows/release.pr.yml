@@ -45,27 +45,33 @@ jobs:
 
       - name: Create Version Tag
         run: |
-          git fetch --tags
-
-          latest=$(git tag --list "v*" --sort=-version:refname | head -n1)
-
-          echo "Latest Tag: $latest"
-
-          if [ -z "$latest" ]; then
-            next="v1.0.1"
+          BRANCH="${{ inputs.source_branch }}"
+      
+          # Only create tags for release branches
+          if [[ "$BRANCH" =~ ^release/(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+      
+            TAG="${BASH_REMATCH[1]}"
+      
+            echo "Release Branch : $BRANCH"
+            echo "Version Tag    : $TAG"
+      
+            git fetch --tags
+      
+            if git rev-parse "$TAG" >/dev/null 2>&1; then
+              echo "❌ Tag '$TAG' already exists."
+              exit 1
+            fi
+      
+            echo "Creating tag $TAG"
+      
+            git tag "$TAG"
+            git push origin "$TAG"
+      
+            echo "✅ Tag '$TAG' created successfully."
+      
           else
-            version=${latest#v}
-            IFS='.' read -r major minor patch <<< "$version"
-
-            patch=$((patch + 1))
-
-            next="v${major}.${minor}.${patch}"
+            echo "Hotfix branch detected. Skipping version tag creation."
           fi
-
-          echo "Creating Tag: $next"
-
-          git tag "$next"
-          git push origin "$next"
 
       - name: Setup Java
         uses: actions/setup-java@v4
