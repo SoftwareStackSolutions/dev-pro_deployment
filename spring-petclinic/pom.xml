@@ -13,17 +13,7 @@
   <version>4.0.0-SNAPSHOT</version>
 
   <name>petclinic</name>
-  <distributionManagement>
-    <repository>
-        <id>nexus</id>
-        <url>http://3.86.223.153:8081/repository/maven-dev/</url>
-    </repository>
-
-    <snapshotRepository>
-        <id>nexus</id>
-        <url>http://3.86.223.153:8081/repository/maven-snapshots-dev/</url>
-    </snapshotRepository>
- </distributionManagement>  
+ 
   <properties>
     <!-- Generic properties -->
     <java.version>17</java.version>
