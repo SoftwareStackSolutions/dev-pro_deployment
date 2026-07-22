@@ -1,1 +1,20 @@
+replicaCount: 2
 
+image:
+  repository: 103731055478.dkr.ecr.us-east-1.amazonaws.com/petclinic
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8080
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+  limits:
+    cpu: 500m
+    memory: 1Gi
