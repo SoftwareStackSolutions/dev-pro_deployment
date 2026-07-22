@@ -1,4 +1,4 @@
-name: DEV Pull Request Validations
+name: DEV Pull Request Validation
 
 on:
   pull_request:
@@ -8,96 +8,102 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  security-events: write
 
 jobs:
-  terraform-plan:
-    name: Validate, Scan & Plan
+  java-validation:
+    name: Java Build, Test & Scan
     runs-on: ubuntu-latest
 
     env:
       ENVIRONMENT: dev
 
     steps:
+      #################################################################
       # Checkout Repository
+      #################################################################
       - name: Checkout Repository
         uses: actions/checkout@v4
-        
+
+      #################################################################
+      # Validate Source Branch
+      #################################################################
       - name: Validate Source Branch
         run: |
           echo "Source Branch: ${{ github.head_ref }}"
-      
+
           if [[ ! "${{ github.head_ref }}" =~ ^(feature|hotfix)/ ]]; then
             echo "Only feature/* or hotfix/* branches can create a PR into Dev."
             exit 1
           fi
-          
-      # Setup Java (Required for Sonar Scanner)
+
+      #################################################################
+      # Setup Java
+      #################################################################
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+          cache: maven
 
-      # Setup Terraform
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      #################################################################
+      # Initialize CodeQL
+      #################################################################
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
         with:
-          terraform_version: 1.9.8
+          languages: java
 
       #################################################################
-      # Authenticate to AWS
+      # Maven Validate
       #################################################################
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.DEV_AWS_REGION }}
+      - name: Maven Validate
+        run: mvn validate
 
       #################################################################
-      # SonarQube Scan (EC2 Hosted)
+      # Compile
       #################################################################
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v6
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        with:
-          args: >
-            -Dsonar.projectKey=dev-pro_deployment
-            -Dsonar.projectName=dev-pro_deployment
-            -Dsonar.sources=.
-            -Dsonar.exclusions=.terraform/**,**/*.tfstate,**/*.tfstate.backup,**/.terraform.lock.hcl
+      - name: Compile Application
+        run: mvn clean compile
 
       #################################################################
-      # Terraform
+      # Run JUnit Tests
       #################################################################
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Format Check
-        run: terraform fmt -check -recursive
-
-      - name: Terraform Validate
-        run: terraform validate
+      - name: Run Unit Tests
+        run: mvn test
 
       #################################################################
-      # Identify Environment
+      # Package Application
       #################################################################
-      - name: Identify Environment
-        run: echo "Deploying to $ENVIRONMENT"
+      - name: Package JAR
+        run: mvn package -DskipTests
 
       #################################################################
-      # Terraform Plan
+      # Upload JAR Artifact
       #################################################################
-      - name: Terraform Plan
-        run: terraform plan -input=false -out=tfplan
-
-      #################################################################
-      # Upload Plan (Optional)
-      #################################################################
-      - name: Upload Terraform Plan
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-plan
-          path: tfplan
+          name: spring-boot-jar
+          path: target/*.jar
+
+      #################################################################
+      # SonarQube Scan
+      #################################################################
+      # - name: SonarQube Scan
+      #   uses: SonarSource/sonarqube-scan-action@v6
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      #     SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      #   with:
+      #     args: >
+      #       -Dsonar.projectKey=dev-pro_deployment
+      #       -Dsonar.projectName=dev-pro_deployment
+      #       -Dsonar.sources=src
+
+      #################################################################
+      # CodeQL Analysis
+      #################################################################
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
