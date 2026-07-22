@@ -59,24 +59,27 @@ jobs:
       # Maven Validate
       #################################################################
       - name: Maven Validate
+        working-directory: spring-petclinic
         run: mvn validate
-
       #################################################################
       # Compile
       #################################################################
       - name: Compile Application
+        working-directory: spring-petclinic
         run: mvn clean compile
 
       #################################################################
       # Run JUnit Tests
       #################################################################
       - name: Run Unit Tests
+        working-directory: spring-petclinic
         run: mvn test
 
       #################################################################
       # Package Application
       #################################################################
       - name: Package JAR
+        working-directory: spring-petclinic
         run: mvn package -DskipTests
 
       #################################################################
