@@ -49,13 +49,39 @@ jobs:
         run: mvn package -DskipTests
 
       ####################################################################
-      # Upload Build Artifact
+      # Upload Build Artifact (GitHub Artifact)
       ####################################################################
       - name: Upload JAR Artifact
         uses: actions/upload-artifact@v4
         with:
           name: spring-petclinic-${{ env.APP_VERSION }}
           path: spring-petclinic/target/*.jar
+
+      ####################################################################
+      # Configure Maven Settings for Nexus
+      ####################################################################
+      - name: Configure Maven Settings
+        run: |
+          mkdir -p ~/.m2
+
+          cat > ~/.m2/settings.xml <<EOF
+          <settings>
+            <servers>
+              <server>
+                <id>nexus</id>
+                <username>${{ secrets.NEXUS_USERNAME }}</username>
+                <password>${{ secrets.NEXUS_PASSWORD }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
+      ####################################################################
+      # Publish Artifact to Nexus Repository
+      ####################################################################
+      - name: Publish JAR to Nexus
+        working-directory: spring-petclinic
+        run: mvn deploy -DskipTests
 
       ####################################################################
       # Configure AWS Credentials
@@ -97,7 +123,10 @@ jobs:
       ####################################################################
       - name: Deployment Summary
         run: |
-          echo "Application Name : $APP_NAME"
-          echo "Application Version : $APP_VERSION"
+          echo "======================================="
+          echo "Application : $APP_NAME"
+          echo "Version     : $APP_VERSION"
           echo "Environment : DEV"
-          echo "Docker Image Successfully Pushed to Amazon ECR"
+          echo "Artifact     : Uploaded to Nexus"
+          echo "Docker Image : Uploaded to Amazon ECR"
+          echo "======================================="
