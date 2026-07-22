@@ -81,7 +81,10 @@ jobs:
       ####################################################################
       - name: Publish JAR to Nexus
         working-directory: spring-petclinic
-        run: mvn deploy -DskipTests
+        run: |
+          mvn deploy \
+            -DskipTests \
+            -DaltDeploymentRepository=nexus::default::http://${{ secrets.NEXUS_URL }}/repository/maven-snapshots-dev/
 
       ####################################################################
       # Configure AWS Credentials
