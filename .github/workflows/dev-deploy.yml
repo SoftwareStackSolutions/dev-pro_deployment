@@ -6,25 +6,60 @@ on:
       - Dev
 
 permissions:
-  contents: read
+  contents: write
+  packages: write
+
+env:
+  JAVA_VERSION: "17"
+  APP_NAME: spring-petclinic
+  APP_VERSION: 1.0.${{ github.run_number }}
 
 jobs:
-  terraform-apply:
-    name: Terraform Apply (DEV)
+  deploy-dev:
+    name: Build & Push Docker Image
     runs-on: ubuntu-latest
 
-    env:
-      ENVIRONMENT: dev
-
     steps:
+
+      ####################################################################
+      # Checkout Repository
+      ####################################################################
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      ####################################################################
+      # Setup Java
+      ####################################################################
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
-          terraform_version: 1.9.8
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
 
+      ####################################################################
+      # Build Application
+      ####################################################################
+      - name: Maven Clean
+        working-directory: spring-petclinic
+        run: mvn clean
+
+      - name: Maven Package
+        working-directory: spring-petclinic
+        run: mvn package -DskipTests
+
+      ####################################################################
+      # Upload Build Artifact
+      ####################################################################
+      - name: Upload JAR Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spring-petclinic-${{ env.APP_VERSION }}
+          path: spring-petclinic/target/*.jar
+
+      ####################################################################
+      # Configure AWS Credentials
+      ####################################################################
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -32,14 +67,37 @@ jobs:
           aws-secret-access-key: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.DEV_AWS_REGION }}
 
-      - name: Identify Environment
-        run: echo "Deploying to $ENVIRONMENT"
+      ####################################################################
+      # Login to Amazon ECR
+      ####################################################################
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Apply
+      ####################################################################
+      # Build Docker Image
+      ####################################################################
+      - name: Build Docker Image
+        working-directory: spring-petclinic
         run: |
-          terraform apply \
-            -auto-approve \
-         
+          docker build \
+            -t ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ env.APP_VERSION }} \
+            -t ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest .
+
+      ####################################################################
+      # Push Docker Image
+      ####################################################################
+      - name: Push Docker Image
+        run: |
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ env.APP_VERSION }}
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest
+
+      ####################################################################
+      # Deployment Summary
+      ####################################################################
+      - name: Deployment Summary
+        run: |
+          echo "Application Name : $APP_NAME"
+          echo "Application Version : $APP_VERSION"
+          echo "Environment : DEV"
+          echo "Docker Image Successfully Pushed to Amazon ECR"
