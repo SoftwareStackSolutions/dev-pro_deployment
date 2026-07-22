@@ -84,7 +84,7 @@ jobs:
         run: |
           mvn deploy \
             -DskipTests \
-            -DaltDeploymentRepository=nexus::default::http://${{ secrets.NEXUS_URL }}/repository/maven-snapshots-dev/
+            -DaltDeploymentRepository=nexus::default::${{ secrets.NEXUS_URL }}/repository/maven-snapshots-dev/
 
       ####################################################################
       # Configure AWS Credentials
