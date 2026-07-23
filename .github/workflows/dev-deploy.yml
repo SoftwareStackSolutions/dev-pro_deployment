@@ -122,13 +122,13 @@ jobs:
           docker push ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest
           
      ####################################################################
-      # Login Cluster
+      # Configure EKS
       ####################################################################
-      - name: Configure kubectl
+      - name: Configure EKS
         run: |
           aws eks update-kubeconfig \
-            --region us-east-1 \
-            --name my-eks-cluster
+            --region ${{ secrets.DEV_AWS_REGION }} \
+            --name ${{ secrets.EKS_CLUSTER_NAME }}
             
       ####################################################################
       # Install ArgoCD (Idempotent)
