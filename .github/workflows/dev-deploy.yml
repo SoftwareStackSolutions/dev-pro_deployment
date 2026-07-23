@@ -145,16 +145,16 @@ jobs:
       ####################################################################
       - name: Push Changes
         run: |
-          git push origin Dev      
-                
-           ####################################################################
-            # Configure EKS
-            ####################################################################
-            - name: Configure EKS
-              run: |
-                aws eks update-kubeconfig \
-                  --region ${{ secrets.DEV_AWS_REGION }} \
-                  --name ${{ secrets.EKS_CLUSTER_NAME }}
+          git push origin Dev    
+
+      ####################################################################
+      # Configure EKS
+      ###################################################################
+      - name: Configure EKS
+        run: |
+          aws eks update-kubeconfig \
+          --region ${{ secrets.DEV_AWS_REGION }} \
+          --name ${{ secrets.EKS_CLUSTER_NAME }}      
             
       ####################################################################
       # Install ArgoCD (Idempotent)
