@@ -1,2 +1,2 @@
 # dev-pro_deployment
-repository for end to end production deployment flows
+repository for end to end production deployment flow
