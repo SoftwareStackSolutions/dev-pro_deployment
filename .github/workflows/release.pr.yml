@@ -8,154 +8,290 @@ on:
         required: true
         type: string
 
+
 permissions:
   contents: write
   pull-requests: write
+  security-events: write
+
 
 jobs:
-  terraform-plan:
-    name: Terraform Plan (ACC)
+
+  acc-validation:
+
+    name: ACC Java Build, Test & Scan
+
     runs-on: ubuntu-latest
 
     env:
       ENVIRONMENT: acc
 
+
     steps:
+
+      #################################################################
+      # Checkout Repository
+      #################################################################
+
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.source_branch }}
           fetch-depth: 0
 
+
+      #################################################################
+      # Validate Source Branch
+      #################################################################
+
       - name: Validate Source Branch
         run: |
+
           echo "Source Branch: ${{ inputs.source_branch }}"
 
           if [[ ! "${{ inputs.source_branch }}" =~ ^(release|hotfix)/ ]]; then
-            echo "❌ Only release/* or hotfix/* branches are allowed."
+
+            echo "Only release/* or hotfix/* branches are allowed."
+
             exit 1
+
           fi
+
+
+
+      #################################################################
+      # Configure Git
+      #################################################################
 
       - name: Configure Git
         run: |
+
           git config --global user.name "github-actions[bot]"
+
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git
+          git remote set-url origin \
+          https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git
+
+
+
+      #################################################################
+      # Create Version Tag
+      #################################################################
 
       - name: Create Version Tag
         run: |
-          git fetch --tags
 
-          latest=$(git tag --list "v*" --sort=-version:refname | head -n1)
+          BRANCH="${{ inputs.source_branch }}"
 
-          echo "Latest Tag: $latest"
 
-          if [ -z "$latest" ]; then
-            next="v1.0.1"
+          if [[ "$BRANCH" =~ ^release/(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+
+
+            TAG="${BASH_REMATCH[1]}"
+
+
+            echo "Creating Tag: $TAG"
+
+
+            git fetch --tags
+
+
+            if git rev-parse "$TAG" >/dev/null 2>&1; then
+
+              echo "Tag '$TAG' already exists."
+
+              exit 1
+
+            fi
+
+
+            git tag "$TAG"
+
+            git push origin "$TAG"
+
+
+            echo "Tag created successfully."
+
+
           else
-            version=${latest#v}
-            IFS='.' read -r major minor patch <<< "$version"
 
-            patch=$((patch + 1))
+            echo "Hotfix branch detected. Tag creation skipped."
 
-            next="v${major}.${minor}.${patch}"
           fi
 
-          echo "Creating Tag: $next"
 
-          git tag "$next"
-          git push origin "$next"
+
+      #################################################################
+      # Setup Java
+      #################################################################
 
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
+
           distribution: temurin
-          java-version: "17"
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+          java-version: '17'
+
+          cache: maven
+
+
+
+      #################################################################
+      # Initialize CodeQL
+      #################################################################
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+
         with:
-          terraform_version: 1.9.8
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.ACC_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.ACC_AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.ACC_AWS_REGION }}
+          languages: java
 
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v6
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        with:
-          args: >
-            -Dsonar.projectKey=acc-deployment
-            -Dsonar.projectName=acc-deployment
-            -Dsonar.sources=.
-            -Dsonar.exclusions=.terraform/**,**/*.tfstate,**/*.tfstate.backup,**/.terraform.lock.hcl
 
-      - name: Terraform Init
-        run: terraform init
 
-      - name: Terraform Format Check
-        run: terraform fmt -check -recursive
+      #################################################################
+      # Maven Validate
+      #################################################################
 
-      - name: Terraform Validate
-        run: terraform validate
+      - name: Maven Validate
+        working-directory: spring-petclinic
+        run: mvn validate
 
-      - name: Identify Environment
-        run: |
-          echo "Environment: $ENVIRONMENT"
 
-      - name: Terraform Plan
-        run: terraform plan -input=false -out=tfplan
 
-      - name: Upload Terraform Plan
+      #################################################################
+      # Compile Application
+      #################################################################
+
+      - name: Compile Application
+        working-directory: spring-petclinic
+        run: mvn clean compile
+
+
+
+      #################################################################
+      # Unit Test
+      #################################################################
+
+      - name: Run Unit Tests
+        working-directory: spring-petclinic
+        run: mvn test
+
+
+
+      #################################################################
+      # Package JAR
+      #################################################################
+
+      - name: Package Application
+        working-directory: spring-petclinic
+        run: mvn package -DskipTests
+
+
+
+      #################################################################
+      # Upload JAR Artifact
+      #################################################################
+
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
+
         with:
-          name: terraform-plan-acc
-          path: tfplan
-          
+
+          name: spring-boot-jar
+
+          path: spring-petclinic/target/*.jar
+
+
+
+      # #################################################################
+      # # SonarQube Scan
+      # #################################################################
+
+      # - name: SonarQube Scan
+      #   uses: SonarSource/sonarqube-scan-action@v6
+
+      #   env:
+
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      #     SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+
+      #   with:
+
+      #     args: >
+
+      #       -Dsonar.projectKey=acc-deployment
+
+      #       -Dsonar.projectName=acc-deployment
+
+      #       -Dsonar.sources=spring-petclinic/src
+
+
+
+      #################################################################
+      # CodeQL Analysis
+      #################################################################
+
+      - name: Perform CodeQL Analysis
+
+        uses: github/codeql-action/analyze@v3
+
+
+
+      #################################################################
+      # Create Pull Request to ACC
+      #################################################################
+
       - name: Create Pull Request to ACC
+
         env:
+
           GH_TOKEN: ${{ secrets.GH_PAT }}
+
+
         run: |
-          echo "Checking if PR already exists..."
+
+          echo "Checking existing PR..."
+
 
           PR_EXISTS=$(gh pr list \
-            --base Acc \
-            --head "${{ inputs.source_branch }}" \
-            --state open \
-            --json number \
-            --jq 'length')
+          --base Acc \
+          --head "${{ inputs.source_branch }}" \
+          --state open \
+          --json number \
+          --jq 'length')
+
 
           if [ "$PR_EXISTS" -gt 0 ]; then
+
             echo "Pull Request already exists."
+
             exit 0
+
           fi
 
-          echo "Creating Pull Request..."
+
 
           gh pr create \
-            --base Acc \
-            --head "${{ inputs.source_branch }}" \
-            --title "Release: ${{ inputs.source_branch }} → Acc" \
-            --body "
-          ## ACC Release
+          --base Acc \
+          --head "${{ inputs.source_branch }}" \
+          --title "Release: ${{ inputs.source_branch }} → Acc" \
+          --body "
 
-          **Source Branch:** \`${{ inputs.source_branch }}\`
+          ## ACC Release Validation
 
-          **Target Branch:** \`Acc\`
+          Source Branch:
+          ${{ inputs.source_branch }}
 
-          ### Validation Completed
+          Target Branch:
+          Acc
 
-          - ✅ SonarQube Scan
-          - ✅ Terraform Format Check
-          - ✅ Terraform Validate
-          - ✅ Terraform Plan
+
+          Validation Completed:
 
           Please review and merge this PR.
           "
