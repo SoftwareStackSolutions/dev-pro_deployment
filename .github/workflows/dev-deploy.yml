@@ -120,16 +120,34 @@ jobs:
         run: |
           docker push ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ env.APP_VERSION }}
           docker push ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest
-
+          
+     ####################################################################
+      # Login Cluster
       ####################################################################
-      # Deployment Summary
-      ####################################################################
-      - name: Deployment Summary
+      - name: Configure kubectl
         run: |
-          echo "======================================="
-          echo "Application : $APP_NAME"
-          echo "Version     : $APP_VERSION"
-          echo "Environment : DEV"
-          echo "Artifact     : Uploaded to Nexus"
-          echo "Docker Image : Uploaded to Amazon ECR"
-          echo "======================================="
+          aws eks update-kubeconfig \
+            --region us-east-1 \
+            --name my-eks-cluster
+            
+      ####################################################################
+      # Installing ARGOCD
+      ####################################################################
+      - name: Create Namespace
+        run: |
+          kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Install ArgoCD
+        run: |
+          kubectl apply --server-side -n argocd \
+          -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+      - name: Show Password
+        run: |
+          echo "=================================="
+          echo "ARGOCD USERNAME : admin"
+          echo "ARGOCD PASSWORD:"
+          kubectl -n argocd get secret argocd-initial-admin-secret \
+            -o jsonpath="{.data.password}" | base64 -d
+          echo ""
+          echo "=================================="
