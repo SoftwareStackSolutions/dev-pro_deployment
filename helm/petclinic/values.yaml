@@ -4,7 +4,7 @@ namespace: dev
 
 image:
   repository: 103731055478.dkr.ecr.us-east-1.amazonaws.com/petclinic
-  tag: 1.0.68
+  tag: latest
   pullPolicy: Always
 
 container:
@@ -12,32 +12,32 @@ container:
 
 service:
   name: petclinic
-  type: ClusterIP
+  type: LoadBalancer
   port: 80
   targetPort: 8080
 
 ingress:
-  enabled: true
-
+  enabled: false
   className: nginx
-
   annotations: {}
-
   hosts:
     - host: petclinic.local
       paths:
         - path: /
           pathType: Prefix
-
   tls: []
+
+serviceAccount:
+  create: false
+  name: default
 
 resources:
   requests:
-    cpu: 250m
-    memory: 512Mi
+    cpu: "250m"
+    memory: "512Mi"
   limits:
-    cpu: 500m
-    memory: 1Gi
+    cpu: "500m"
+    memory: "1Gi"
 
 livenessProbe:
   path: /
@@ -48,7 +48,3 @@ readinessProbe:
   path: /
   initialDelaySeconds: 30
   periodSeconds: 10
-
-serviceAccount:
-  create: false
-  name: default
