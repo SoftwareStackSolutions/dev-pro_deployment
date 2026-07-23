@@ -194,7 +194,7 @@ jobs:
           
       ####################################################################
       # Deploy Application to ArgoCD
-      ####################################################################
+      #####################################################################
       - name: Deploy ArgoCD Application
         run: |
           kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
