@@ -206,29 +206,29 @@ jobs:
 
 
 
-      #################################################################
-      # SonarQube Scan
-      #################################################################
+      # #################################################################
+      # # SonarQube Scan
+      # #################################################################
 
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v6
+      # - name: SonarQube Scan
+      #   uses: SonarSource/sonarqube-scan-action@v6
 
-        env:
+      #   env:
 
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      #     SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
 
-        with:
+      #   with:
 
-          args: >
+      #     args: >
 
-            -Dsonar.projectKey=acc-deployment
+      #       -Dsonar.projectKey=acc-deployment
 
-            -Dsonar.projectName=acc-deployment
+      #       -Dsonar.projectName=acc-deployment
 
-            -Dsonar.sources=spring-petclinic/src
+      #       -Dsonar.sources=spring-petclinic/src
 
 
 
