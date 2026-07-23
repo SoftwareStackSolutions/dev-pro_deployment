@@ -120,15 +120,41 @@ jobs:
         run: |
           docker push ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ env.APP_VERSION }}
           docker push ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest
-          
-     ####################################################################
-      # Configure EKS
+
       ####################################################################
-      - name: Configure EKS
+      # Update Helm Image Tag
+      ####################################################################
+      - name: Update Helm Image Tag
         run: |
-          aws eks update-kubeconfig \
-            --region ${{ secrets.DEV_AWS_REGION }} \
-            --name ${{ secrets.EKS_CLUSTER_NAME }}
+          sed -i "s/^  tag:.*/  tag: ${APP_VERSION}/" helm/petclinic/values.yaml
+      
+      ####################################################################
+      # Commit Helm Changes
+      ####################################################################
+      - name: Commit Helm Changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+      
+          git add helm/petclinic/values.yaml
+      
+          git diff --cached --quiet || git commit -m "Update image tag to ${APP_VERSION}"
+      
+      ####################################################################
+      # Push Helm Changes
+      ####################################################################
+      - name: Push Changes
+        run: |
+          git push origin Dev      
+                
+           ####################################################################
+            # Configure EKS
+            ####################################################################
+            - name: Configure EKS
+              run: |
+                aws eks update-kubeconfig \
+                  --region ${{ secrets.DEV_AWS_REGION }} \
+                  --name ${{ secrets.EKS_CLUSTER_NAME }}
             
       ####################################################################
       # Install ArgoCD (Idempotent)
