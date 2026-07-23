@@ -165,3 +165,14 @@ jobs:
           fi
       
           echo "=================================="
+          
+      ####################################################################
+      # Deploy Application to ArgoCD
+      ####################################################################
+      - name: Deploy ArgoCD Application
+        run: |
+          kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -f argocd/application.yaml
+          sleep 10
+          kubectl get applications -n argocd
+      
