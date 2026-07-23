@@ -5,72 +5,83 @@ on:
     branches:
       - Prod
 
+
 permissions:
   contents: read
   pull-requests: write
+  security-events: write
 
 jobs:
-  terraform-plan:
-    name: Terraform Plan (PROD)
+  java-validation:
+    name: Java Build, Test & Scan
     runs-on: ubuntu-latest
 
     env:
       ENVIRONMENT: prod
-
     steps:
-
+      #################################################################
+      # Checkout Repository
+      #################################################################
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Allow only ACC branch
-      - name: Validate Source Branch
-        run: |
-          echo "Source Branch: ${{ github.head_ref }}"
-
-          if [[ "${{ github.head_ref }}" != "Acc" ]]; then
-            echo "Only Acc branch can create PR into PROD."
-            exit 1
-          fi
-
+      #################################################################
+      # Setup Java
+      #################################################################
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+          cache: maven
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      #################################################################
+      # Initialize CodeQL
+      #################################################################
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
         with:
-          terraform_version: 1.9.8
+          languages: java
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.PROD_AWS_REGION }}
-            
-      - name: Terraform Init
-        run: terraform init
+      #################################################################
+      # Maven Validate
+      #################################################################
+      - name: Maven Validate
+        working-directory: spring-petclinic
+        run: mvn validate
+      #################################################################
+      # Compile
+      #################################################################
+      - name: Compile Application
+        working-directory: spring-petclinic
+        run: mvn clean compile
 
-      - name: Terraform Format Check
-        run: terraform fmt -check -recursive
+      #################################################################
+      # Run JUnit Tests
+      #################################################################
+      - name: Run Unit Tests
+        working-directory: spring-petclinic
+        run: mvn test
 
-      - name: Terraform Validate
-        run: terraform validate
+      #################################################################
+      # Package Application
+      #################################################################
+      - name: Package JAR
+        working-directory: spring-petclinic
+        run: mvn package -DskipTests
 
-      - name: Identify Environment
-        run: |
-          echo "Environment : $ENVIRONMENT"
-
-      - name: Terraform Plan
-        run: |
-          terraform plan \
-            -input=false \
-           
-
-      - name: Upload Terraform Plan
+      #################################################################
+      # Upload JAR Artifact
+      #################################################################
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-plan-prod
-          path: tfplan
+          name: spring-boot-jar 
+          path: target/*.jar
+          
+      ################################################################
+      # CODE QL
+      #################################################################
+   
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
