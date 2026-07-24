@@ -4,7 +4,7 @@ namespace: dev
 
 image:
   repository: 103731055478.dkr.ecr.us-east-1.amazonaws.com/petclinic
-  tag: 1.0.75
+  tag: 1.0.78
   pullPolicy: Always
 
 container:
