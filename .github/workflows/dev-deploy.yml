@@ -126,7 +126,6 @@ jobs:
       ####################################################################
       - name: Update Helm Image Tag
         run: |
-          helm install
           sed -i "s/^  tag:.*/  tag: ${APP_VERSION}/" helm/petclinic/values.yaml
       
       ####################################################################
